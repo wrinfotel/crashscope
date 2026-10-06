@@ -3,7 +3,11 @@ package cli
 import (
 	"fmt"
 	"io"
+	"os"
 
+	"crashscope/internal/classifier"
+	"crashscope/internal/parser"
+	"crashscope/internal/report"
 	"crashscope/internal/version"
 )
 
@@ -21,10 +25,6 @@ Exit codes: 0 cause identified, 1 unrecognized, 2 not an hs_err file, 3 usage er
 
 // Run parses args and returns the process exit code.
 func Run(args []string, stdout, stderr io.Writer) int {
-	if len(args) < 2 {
-		fmt.Fprint(stderr, usage)
-		return 3
-	}
 	var files []string
 	jsonOut, verbose := false, false
 	for _, a := range args[1:] {
@@ -43,12 +43,46 @@ func Run(args []string, stdout, stderr io.Writer) int {
 			files = append(files, a)
 		}
 	}
-	_ = jsonOut
-	_ = verbose
 	if len(files) == 0 {
 		fmt.Fprint(stderr, usage)
 		return 3
 	}
-	fmt.Fprintln(stderr, "analysis not implemented yet")
-	return 1
+
+	exit := 0
+	for _, path := range files {
+		code := analyzeOne(path, jsonOut, verbose, stdout, stderr)
+		if code > exit {
+			exit = code
+		}
+	}
+	return exit
+}
+
+func analyzeOne(path string, jsonOut, verbose bool, stdout, stderr io.Writer) int {
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		fmt.Fprintf(stderr, "crashscope: %v\n", err)
+		return 2
+	}
+	r, err := parser.Parse(path, raw)
+	if err != nil {
+		fmt.Fprintf(stderr, "crashscope: %v\n", err)
+		return 2
+	}
+	verdicts := classifier.Classify(r)
+	if jsonOut {
+		if err := report.RenderJSON(stdout, r, verdicts); err != nil {
+			fmt.Fprintf(stderr, "crashscope: render: %v\n", err)
+			return 2
+		}
+	} else {
+		if err := report.RenderText(stdout, r, verdicts, verbose); err != nil {
+			fmt.Fprintf(stderr, "crashscope: render: %v\n", err)
+			return 2
+		}
+	}
+	if verdicts[0].Confidence == "low" {
+		return 1 // parsed fine, but unrecognized pattern
+	}
+	return 0
 }
