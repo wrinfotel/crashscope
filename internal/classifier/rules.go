@@ -201,7 +201,7 @@ func ruleJniCrash(r *model.CrashReport) (*Verdict, bool) {
 		}
 	}
 	for _, m := range r.Modules {
-		if strings.HasSuffix(m.Path, "/"+lib) {
+		if strings.HasSuffix(m.Path, "/"+lib) || strings.HasSuffix(m.Path, "\\"+lib) || m.Path == lib {
 			v.Evidence = append(v.Evidence, "loaded from "+m.Path)
 		}
 	}
@@ -257,9 +257,15 @@ func ruleVMInternal(r *model.CrashReport) (*Verdict, bool) {
 }
 
 func ruleGlibcHardware(r *model.CrashReport) (*Verdict, bool) {
+	// Allocator-shaped phrases only: a bare "corrupted" also occurs in
+	// unrelated lines (e.g. a job runner's "output files ... might be
+	// corrupted:" cleanup notice, seen on a real Picard log) and must not
+	// trigger this verdict.
 	triggers := []string{
-		"malloc():", "free():", "corrupted", "double free", "invalid pointer",
+		"malloc():", "free():", "double free", "invalid pointer",
 		"glibc detected", "Machine check", "hardware error",
+		"corrupted top size", "corrupted double-linked list",
+		"munmap_chunk(): invalid pointer",
 	}
 	txt := allText(r)
 	for _, t := range triggers {

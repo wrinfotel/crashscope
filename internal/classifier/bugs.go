@@ -11,10 +11,10 @@ import (
 
 // Bug is a known-bug hit surfaced in the report.
 type Bug struct {
-	ID      string
-	URL     string
-	Summary string
-	Fix     string
+	ID      string `json:"id"`
+	URL     string `json:"url"`
+	Summary string `json:"summary"`
+	Fix     string `json:"fix"`
 }
 
 type bugDef struct {

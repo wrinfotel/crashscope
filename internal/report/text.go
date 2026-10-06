@@ -15,7 +15,13 @@ func RenderText(w io.Writer, r *model.CrashReport, vs []classifier.Verdict, verb
 	b := &strings.Builder{}
 	fmt.Fprintf(b, "crashscope %s — offline JVM crash log analyzer\n\n", version.Version)
 	fmt.Fprintf(b, "  File:    %s\n", r.Path)
-	fmt.Fprintf(b, "  JVM:     %s %d — %s\n", r.JDKVendor, r.JDKMajor, trunc(r.JVMVersion, 100))
+	if r.JDKVendor == "" && r.JDKMajor == 0 {
+		// JDK-7-era logs: vendor and major are unknown — print the raw
+		// version string instead of "JVM: 0 —".
+		fmt.Fprintf(b, "  JVM:     %s\n", trunc(r.JVMVersion, 100))
+	} else {
+		fmt.Fprintf(b, "  JVM:     %s %d — %s\n", r.JDKVendor, r.JDKMajor, trunc(r.JVMVersion, 100))
+	}
 	if r.Signal != "" {
 		fmt.Fprintf(b, "  Signal:  %s at pc=%s in thread %q (%s)\n",
 			r.Signal, r.PC, r.CurrentThread.Name, r.CurrentThread.State)

@@ -71,6 +71,69 @@ func TestClassifyGlibc(t *testing.T) {
 	}
 }
 
+// F3: a Picard-style cleanup line pasted above the log (bare "corrupted:",
+// exactly how the surrounding snakemake output parses when a user saves the
+// whole console paste as the .log file) must not trigger glibc-hardware.
+func TestGlibcTriggerIgnoresBareCorrupted(t *testing.T) {
+	r, err := parser.Parse("f", []byte(picardCleanupLog))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, v := range Classify(r) {
+		if v.ID == "glibc-hardware" {
+			t.Fatalf("bare \"corrupted\" line must not trigger glibc-hardware: %+v", v)
+		}
+	}
+}
+
+// The JNI "loaded from <path>" evidence must also work for Windows library
+// paths (backslash separators) on a real-shape log.
+func TestClassifyRealShapeWindowsJniEvidence(t *testing.T) {
+	raw, err := os.ReadFile("../parser/testdata/real_windows_corretto8.log")
+	if err != nil {
+		t.Fatal(err)
+	}
+	r, err := parser.Parse("f", raw)
+	if err != nil {
+		t.Fatal(err)
+	}
+	vs := Classify(r)
+	if len(vs) == 0 || vs[0].ID != "sigsegv-jni" {
+		t.Fatalf("verdicts = %+v", vs)
+	}
+	found := false
+	for _, e := range vs[0].Evidence {
+		if strings.HasPrefix(e, "loaded from ") && strings.Contains(e, "sigar-amd64-winnt.dll") {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatalf("no \"loaded from\" evidence for the crashing dll: %+v", vs[0].Evidence)
+	}
+}
+
+// Real-shape Linux log (VMThread, V libjvm frame) classifies as vm-internal;
+// in particular the Picard log shape must not produce a glibc false positive.
+func TestClassifyRealShapeLinuxVMInternal(t *testing.T) {
+	raw, err := os.ReadFile("../parser/testdata/real_linux_jdk8u192.log")
+	if err != nil {
+		t.Fatal(err)
+	}
+	r, err := parser.Parse("f", raw)
+	if err != nil {
+		t.Fatal(err)
+	}
+	vs := Classify(r)
+	if len(vs) == 0 || vs[0].ID != "vm-internal" {
+		t.Fatalf("verdicts = %+v, want vm-internal", vs)
+	}
+	for _, v := range vs {
+		if v.ID == "glibc-hardware" {
+			t.Fatalf("real Picard log must not trigger glibc-hardware: %+v", vs)
+		}
+	}
+}
+
 func TestClassifyUnknownFallback(t *testing.T) {
 	r, err := parser.Parse("f", []byte(unknownLog))
 	if err != nil {
@@ -172,6 +235,25 @@ const glibcLog = `#
 ---------------  T H R E A D  ------------
 
 Current thread (0x00007f):  JavaThread "main" [_thread_in_native, id=9, stack(0x0,0x0)]
+`
+
+// picardCleanupLog simulates a console paste saved as a .log file: the
+// snakemake failure output (bare, non-# line with "corrupted:") comes before
+// the hs_err prologue. Source shape: broadinstitute/picard#1501.
+const picardCleanupLog = `Removing output files of failed job mark_duplicates since they might be corrupted: alignment/HG03583_S1_L001.sorted.dedupped.bam
+Shutting down, this might take some time.
+#
+# A fatal error has been detected by the Java Runtime Environment:
+#
+#  SIGSEGV (0xb) at pc=0x00002b8c9ecb3d76, pid=21565, tid=0x00002bbede786700
+#
+# JRE version: Java(TM) SE Runtime Environment (8.0_192-b12) (build 1.8.0_192-b12)
+# Java VM: Java HotSpot(TM) 64-Bit Server VM (25.192-b12 mixed mode linux-amd64 )
+#
+
+---------------  T H R E A D  ------------
+
+Current thread (0x00002b8ca0096000): VMThread [stack: 0x00002bbede686000,0x00002bbede787000] [id=21597]
 `
 
 const unknownLog = `#

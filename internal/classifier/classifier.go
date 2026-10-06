@@ -8,13 +8,13 @@ import (
 
 // Verdict is one diagnosed cause with actionable fixes.
 type Verdict struct {
-	ID         string // stable rule id, e.g. "sigsegv-jni"
-	Title      string // one-line human summary
-	Confidence string // "high" | "medium" | "low"
-	Summary    string
-	Fix        []string
-	Evidence   []string // quoted lines from the log
-	Bugs       []Bug    // known-JVM-bug hits matching this crash
+	ID         string   `json:"id"`         // stable rule id, e.g. "sigsegv-jni"
+	Title      string   `json:"title"`      // one-line human summary
+	Confidence string   `json:"confidence"` // "high" | "medium" | "low"
+	Summary    string   `json:"summary"`
+	Fix        []string `json:"fix"`
+	Evidence   []string `json:"evidence"` // quoted lines from the log
+	Bugs       []Bug    `json:"bugs"`     // known-JVM-bug hits matching this crash
 }
 
 var confidenceRank = map[string]int{"high": 3, "medium": 2, "low": 1}

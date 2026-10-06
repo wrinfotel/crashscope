@@ -30,6 +30,21 @@ type jsonJDK struct {
 
 // RenderJSON writes the machine-readable report.
 func RenderJSON(w io.Writer, r *model.CrashReport, vs []classifier.Verdict) error {
+	// Normalize nil slices to empty ones so no field ever marshals as null
+	// (JSON consumers iterate arrays, not nulls).
+	norm := make([]classifier.Verdict, len(vs))
+	for i, v := range vs {
+		if v.Evidence == nil {
+			v.Evidence = []string{}
+		}
+		if v.Fix == nil {
+			v.Fix = []string{}
+		}
+		if v.Bugs == nil {
+			v.Bugs = []classifier.Bug{}
+		}
+		norm[i] = v
+	}
 	doc := jsonReport{
 		Tool:        "crashscope",
 		Version:     version.Version,
@@ -40,7 +55,7 @@ func RenderJSON(w io.Writer, r *model.CrashReport, vs []classifier.Verdict) erro
 		JVMArgs:     r.JVMArgs,
 		JavaCommand: r.JavaCommand,
 		Libraries:   r.Libraries,
-		Verdicts:    vs,
+		Verdicts:    norm,
 	}
 	if doc.Libraries == nil {
 		doc.Libraries = []string{}
