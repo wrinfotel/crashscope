@@ -21,6 +21,8 @@ binary, runs fully offline, makes **no network calls**, and costs nothing.
 | --verbose  | args, all native libraries, recent events     |
 | --version  | print version                                 |
 
+With multiple files, `--json` prints one JSON document per file, in order.
+
 Exit codes (CI-friendly):
 - `0` — cause identified (confidence ≥ medium)
 - `1` — parsed, but pattern unrecognized

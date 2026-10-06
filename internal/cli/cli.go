@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strings"
 
 	"crashscope/internal/classifier"
 	"crashscope/internal/parser"
@@ -40,6 +41,13 @@ func Run(args []string, stdout, stderr io.Writer) int {
 			fmt.Fprint(stdout, usage)
 			return 0
 		default:
+			// Unknown flags must be a usage error (exit 3), not a
+			// misleading "open --foo" file error (exit 2). "-" alone is
+			// kept as a file path.
+			if len(a) > 1 && strings.HasPrefix(a, "-") {
+				fmt.Fprintf(stderr, "crashscope: unknown option %s\n\n%s", a, usage)
+				return 3
+			}
 			files = append(files, a)
 		}
 	}
