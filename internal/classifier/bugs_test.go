@@ -117,6 +117,9 @@ func TestClassifyIntegratesBugs(t *testing.T) {
 	if len(verdicts) == 0 {
 		t.Fatal("Classify returned no verdicts")
 	}
+	realIDs := map[string]bool{
+		"JDK-8303737": true, "JDK-8356324": true, "JDK-8361117": true, "JDK-8374463": true,
+	}
 	anyBug := false
 	for _, v := range verdicts {
 		if len(v.Bugs) == 0 {
@@ -124,15 +127,49 @@ func TestClassifyIntegratesBugs(t *testing.T) {
 			continue
 		}
 		anyBug = true
-		for _, b := range v.Bugs {
-			if b.ID == "JDK-8361117" {
-				if v.ID != "known-jvm-bug" && v.ID != "unknown" && v.Confidence == "" {
-					t.Errorf("verdict %s: unexpected shape %+v", v.ID, v)
-				}
-			}
+		if !realIDs[v.Bugs[0].ID] {
+			t.Errorf("verdict %s: Bugs[0].ID %q is not a real entry id", v.ID, v.Bugs[0].ID)
 		}
 	}
 	if !anyBug {
 		t.Fatal("no verdict carries bug hits")
+	}
+	foundJDK8361117 := false
+	for _, v := range verdicts {
+		for _, b := range v.Bugs {
+			if b.ID == "JDK-8361117" {
+				foundJDK8361117 = true
+			}
+		}
+	}
+	if !foundJDK8361117 {
+		t.Error("JDK-8361117 not attached to any verdict")
+	}
+}
+
+// TestClassifyKnownBugFallback covers the len(out)==0 branch of the Classify
+// tail: no rule fires (ProblemFrame type "J" keys no rule and the report
+// carries no text), but a real bug def matches — so exactly the dedicated
+// "known-jvm-bug" verdict (medium) appears instead of the "unknown" fallback.
+func TestClassifyKnownBugFallback(t *testing.T) {
+	r := reportWithProblemFrame(17,
+		"Java HotSpot(TM) 64-Bit Server VM (17.0.15+9-LTS-241, mixed mode, sharing, tiered, compressed oops, g1 gc, linux-amd64)",
+		"J", "libjvm.so+0x123", "LShiftLNode::Ideal(PhaseGVN*, bool)+0x378")
+	verdicts := Classify(r)
+	if len(verdicts) != 1 {
+		t.Fatalf("verdicts = %+v, want exactly the known-jvm-bug verdict", verdicts)
+	}
+	v := verdicts[0]
+	if v.ID != "known-jvm-bug" {
+		t.Fatalf("verdict ID = %s, want known-jvm-bug", v.ID)
+	}
+	if v.Confidence != "medium" {
+		t.Errorf("Confidence = %q, want medium", v.Confidence)
+	}
+	if len(v.Bugs) == 0 || v.Bugs[0].ID != "JDK-8361117" {
+		t.Errorf("Bugs = %+v, want JDK-8361117 first", v.Bugs)
+	}
+	if v.ID == "unknown" {
+		t.Error("unknown fallback verdict must not appear when a bug matched")
 	}
 }
