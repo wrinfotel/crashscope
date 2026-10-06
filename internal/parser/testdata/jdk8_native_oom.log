@@ -1,0 +1,40 @@
+#
+# There is insufficient memory for the Java Runtime Environment to continue.
+# Native memory allocation (mmap) failed to map 65536 bytes for committing reserved memory.
+# Possible reason: Allocation of native memory failed.
+#
+# -XX:OnOutOfMemoryError="/app/bin/kill9.sh %p"
+#   Executing /bin/sh -c "/app/bin/kill9.sh 4711"...
+#
+# JRE version: Java(TM) SE Runtime Environment (8.0_392-b27) (build 1.8.0_392-b27)
+# Java VM: OpenJDK 64-Bit Server VM (25.71-b06, mixed mode)
+
+---------------  S U M M A R Y ------------
+
+Command Line: java -Xmx28g -XX:MaxDirectMemorySize=2g com.bigdata.Loader
+
+Host: worker-42, 16 cores, 62G, elapsed time: 98765.432 seconds
+
+---------------  T H R E A D  ------------
+
+Current thread (0x00007f2c88003e80):  JavaThread "main" [_thread_in_native, id=4712, stack(0x00007f2c7f43c000,0x00007f2c7f53d000)]
+
+Stack: [0x00007f2c7f43c000,0x00007f2c7f53d000],  sp=0x00007f2c7f53a120,  free space=1011k
+Native frames: (J=compiled Java code, j=interpreted, Vv=VM code, C=native code)
+C  [libpthread.so+0x9f2c]  pthread_mutex_lock
+v  ~StubRoutines::call_stub
+
+Java frames: (J=compiled Java code, j=interpreted, Vv=VM code, C=native code)
+j  com.bigdata.Loader.main([Ljava/lang/String;)V+120
+
+---------------  V M  A R G S  ---------------
+jvm_args: -Xmx28g -XX:MaxDirectMemorySize=2g
+java_command: com.bigdata.Loader
+Launcher Type: SUN_STANDARD
+
+---------------  E V E N T S  ---------------
+java.lang.OutOfMemoryError: unable to create native thread
+/app/bin/start.sh
+
+---------------  M A P  ---------------
+7f2c84000000-7f2c86000000 r--p 00000000 fd:01 1048578     /usr/lib/jvm/java-8-openjdk-amd64/jre/lib/amd64/server/libjvm.so
