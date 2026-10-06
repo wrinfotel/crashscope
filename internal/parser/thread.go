@@ -9,10 +9,17 @@ import (
 )
 
 var (
-	// Current thread (0x00007f2c8802be80):  JavaThread "main" [_thread_in_native, id=4712, stack(...)]
-	curThreadRe = regexp.MustCompile(`(?m)^Current thread \(0x[0-9a-fA-F]+\):\s+(\S+)\s+"([^"]*)"\s+\[([^\]]+)\]`)
+	// Current thread line variants seen in real logs:
+	//   Current thread (0x00007f2c8802be80):  JavaThread "main" [_thread_in_native, id=4712, stack(...)]
+	//   Current thread (0x00007f1bc0117800): JavaThread "C2 CompilerThread0" daemon [_thread_in_native, id=30354, stack(...)]
+	//   Current thread (0x00002b8ca0096000): VMThread [stack: 0x00002bbede686000,0x00002bbede787000] [id=21597]
+	// The quoted name and attributes between it and the bracket are optional;
+	// some thread kinds put the id in a second bracket group.
+	curThreadRe = regexp.MustCompile(
+		`(?m)^Current thread \(0x[0-9a-fA-F]+\):\s+(\S+)(?:\s+"([^"\n]*)")?[^[\n]*\[([^\]]+)\](?:\s+\[([^\]]+)\])?`)
 	frameLineRe = regexp.MustCompile(`^\s*([VCJjv])\s+(\[[^\]]+\]|\S+)\s*(.*)$`)
-	sigInfoRe   = regexp.MustCompile(`(?m)^siginfo:\s*(.*)$`)
+	// [ \t]* (not \s*) so a bare "siginfo:" line cannot capture the next line.
+	sigInfoRe   = regexp.MustCompile(`(?m)^siginfo:[ \t]*(.*)$`)
 	stackFreeRe = regexp.MustCompile(`(?m)^Stack:\s*\[0x[0-9a-fA-F]+,0x[0-9a-fA-F]+\],\s*sp=0x[0-9a-fA-F]+,\s*free space=(\d+)k`)
 )
 
@@ -22,14 +29,18 @@ func ParseThread(r *model.CrashReport) error {
 	body := r.Section("THREAD")
 
 	if m := curThreadRe.FindStringSubmatch(body); m != nil {
-		r.CurrentThread = model.Thread{
-			Kind:  m[1],
-			Name:  m[2],
-			State: strings.TrimSpace(strings.Split(m[3], ",")[0]),
+		r.CurrentThread = model.Thread{Kind: m[1], Name: m[2]}
+		attrs := m[3]
+		if m[4] != "" {
+			attrs += ", " + m[4]
 		}
-		for _, part := range strings.Split(m[3], ",") {
-			if strings.HasPrefix(strings.TrimSpace(part), "id=") {
-				r.CurrentThread.ID = strings.TrimPrefix(strings.TrimSpace(part), "id=")
+		for _, part := range strings.Split(attrs, ",") {
+			part = strings.TrimSpace(part)
+			switch {
+			case strings.HasPrefix(part, "id="):
+				r.CurrentThread.ID = strings.TrimPrefix(part, "id=")
+			case strings.HasPrefix(part, "_thread"):
+				r.CurrentThread.State = part
 			}
 		}
 	}

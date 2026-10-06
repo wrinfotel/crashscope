@@ -1,0 +1,59 @@
+#
+# A fatal error has been detected by the Java Runtime Environment:
+#
+#  EXCEPTION_ACCESS_VIOLATION (0xc0000005) at pc=0x0000000000b34ed4, pid=100, tid=0x0000000000000230
+#
+# JRE version: OpenJDK Runtime Environment (8.0_342-b07) (build 1.8.0_342-b07)
+# Java VM: OpenJDK 64-Bit Server VM (25.342-b07 mixed mode windows-amd64 compressed oops)
+# Problematic frame:
+# C  [sigar-amd64-winnt.dll+0x14ed4]
+#
+# The crash happened outside the Java Virtual Machine in native code.
+# See problematic frame for where to report the bug.
+#
+
+---------------  S U M M A R Y ------------
+
+Command Line: C:\PerfmonAgent\ServerAgent-2.2.3\startAgent.bat\..\CMDRunner.jar --tool PerfMonAgent
+
+Host: WIN-RUNNODE01, 4 cores, 8G, elapsed time: 96.207 seconds
+
+Time: Thu Jan  1 12:00:00 2026
+
+---------------  T H R E A D  ---------------
+
+Current thread (0x0000021ecf606000): JavaThread "Thread-0" [_thread_in_native, id=560, stack(0x000000bcb2200000,0x000000bcb2300000)]
+
+siginfo: ExceptionCode=0xc0000005, reading address 0xffffffffcfed0d68
+
+Registers:
+RAX=0x0000000000000000, RBX=0x0000000000000000, RCX=0xffffffffcfed0d68, RDX=0x0000000000000000
+
+Native frames: (J=compiled Java code, j=interpreted, Vv=VM code, C=native code)
+C  [sigar-amd64-winnt.dll+0x14ed4]
+
+---------------  P R O C E S S  ---------------
+
+Java Threads: ( => 0x0000021ecf606000 )
+
+VM state: not at safepoint
+
+VM Arguments:
+jvm_args: none
+java_command: C:\PerfmonAgent\ServerAgent-2.2.3\startAgent.bat\..\CMDRunner.jar --tool PerfMonAgent
+Launcher Type: SUN_STANDARD
+
+Dynamic libraries:
+0x00007ff7d7eb0000 - 0x00007ff7d7eea000 C:\Program Files\Amazon Corretto\jdk1.8.0_342\bin\java.exe
+0x00007ff9b3280000 - 0x00007ff9b344f000 C:\Windows\SYSTEM32\ntdll.dll
+0x00007ff9b31c0000 - 0x00007ff9b326d000 C:\Windows\System32\KERNEL32.DLL
+0x00007ff9af750000 - 0x00007ff9af96e000 C:\Windows\System32\KERNELBASE.dll
+0x00007ff9afca0000 - 0x00007ff9afe24000 C:\Windows\System32\gdi32full.dll
+0x0000021eb0f50000 - 0x0000021eb0f59000 C:\Program Files\Amazon Corretto\jdk1.8.0_342\bin\server\jvm.dll
+0x0000000000b20000 - 0x0000000000b90000 C:\PerfmonAgent\ServerAgent-2.2.3\lib\sigar-amd64-winnt.dll
+
+---------------  S Y S T E M  ---------------
+
+OS: Windows Server 2016 , 64 bit Build 14393 (10.0.14393)
+
+vm_info: OpenJDK 64-Bit Server VM (25.342-b07) for windows-amd64 JRE (1.8.0_342-b07), built on Jun  8 2022 00:00:00 by "java-re" with MS VC++ 10.0 (VS2010)

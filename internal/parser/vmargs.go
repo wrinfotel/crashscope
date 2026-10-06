@@ -14,10 +14,17 @@ var (
 
 // ParseVMArgs fills JVMArgs, JavaCommand and Events.
 func ParseVMArgs(r *model.CrashReport) error {
-	if m := jvmArgsRe.FindStringSubmatch(r.Section("VMARGS")); m != nil {
+	// Real hs_err logs (JDK 7-17) carry jvm_args:/java_command: as plain
+	// blocks inside the P R O C E S S section, with no "V M  A R G S"
+	// header — fall back to the PROCESS body when the section is absent.
+	src := r.Section("VMARGS")
+	if src == "" {
+		src = r.Section("PROCESS")
+	}
+	if m := jvmArgsRe.FindStringSubmatch(src); m != nil {
 		r.JVMArgs = strings.TrimSpace(m[1])
 	}
-	if m := javaCommandRe.FindStringSubmatch(r.Section("VMARGS")); m != nil {
+	if m := javaCommandRe.FindStringSubmatch(src); m != nil {
 		r.JavaCommand = strings.TrimSpace(m[1])
 	}
 	for _, ln := range strings.Split(r.Section("EVENTS"), "\n") {

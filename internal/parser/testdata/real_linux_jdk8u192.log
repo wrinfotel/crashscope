@@ -1,0 +1,70 @@
+#
+# A fatal error has been detected by the Java Runtime Environment:
+#
+#  SIGSEGV (0xb) at pc=0x00002b8c9ecb3d76, pid=21565, tid=0x00002bbede786700
+#
+# JRE version: Java(TM) SE Runtime Environment (8.0_192-b12) (build 1.8.0_192-b12)
+# Java VM: Java HotSpot(TM) 64-Bit Server VM (25.192-b12 mixed mode linux-amd64 )
+# Problematic frame:
+# V  [libjvm.so+0x637d76]  InstanceKlass::oop_oop_iterate_nv(oopDesc*, FastScanClosure*)+0x1c6
+#
+# Core dump will be written. Default location: core.21565
+#
+# If you would like to submit a bug report, please visit:
+#   https://bugreport.java.com/bugreport/crash.jsp
+#
+
+---------------  S U M M A R Y ------------
+
+Command Line: picard.jar MarkDuplicates VALIDATION_STRINGENCY=LENIENT
+
+Host: cluster-node05, 64 cores, 503G, elapsed time: 1234.567 seconds
+
+Time: Thu Jan  1 12:00:00 2026
+
+---------------  T H R E A D  ---------------
+
+Current thread (0x00002b8ca0096000): VMThread [stack: 0x00002bbede686000,0x00002bbede787000] [id=21597]
+
+Native frames: (J=compiled Java code, j=interpreted, Vv=VM code, C=native code)
+V  [libjvm.so+0x637d76]  InstanceKlass::oop_oop_iterate_nv(oopDesc*, FastScanClosure*)+0x1c6
+
+siginfo: si_signo: 11 (SIGSEGV), si_code: 1 (SEGV_MAPERR), si_addr: 0x00002b0000000000
+
+Registers:
+RAX=0x0000000000000000, RBX=0x00002b8ca0096000, RCX=0x0000000000000000, RDX=0x0000000000000000
+
+---------------  P R O C E S S  ---------------
+
+Java Threads: ( active 42, daemon 8 )
+
+VM state: at safepoint
+
+VM Mutex/Monitor currently owned by a thread:  None
+
+VM Arguments:
+jvm_args: -Xmx200G
+java_command: picard.jar MarkDuplicates VALIDATION_STRINGENCY=LENIENT
+java_class_path (setting from JAVA_TOOL_OPTIONS): picard.jar
+Launcher Type: SUN_STANDARD
+
+Dynamic libraries:
+003ff000-00400000 rw-p 00000000 00:32 3994409 /opt/java8/bin/java
+00400000-00401000 r-xp 00001000 00:32 3994409 /opt/java8/bin/java
+00600000-00601000 r--p 00001000 00:32 3994409 /opt/java8/bin/java
+00601000-00602000 rw-p 00002000 00:32 3994409 /opt/java8/bin/java
+00c65000-00c86000 rw-p 00000000 00:00 0 [heap]
+2b8c9da80000-2b8c9daa3000 r-xp 00000000 00:32 55663 /opt/glibc-2.24/lib/ld-2.24.so
+2b8c9daa3000-2b8c9daaa000 rw-p 00000000 00:00 0
+2b8c9daaa000-2b8c9daad000 ---p 00000000 00:00 0
+2b8c9ec00000-2b8c9f800000 r-xp 00010000 00:32 55701 /opt/java8/jre/lib/amd64/server/libjvm.so
+2b8c9f800000-2b8ca0800000 rw-p 00000000 00:00 0
+7f1b00000000-7f1b03d74000 rw-p 00000000 00:00 0
+
+---------------  S Y S T E M  ---------------
+
+OS:CentOS release 6.9 (Final)
+uname:Linux 2.6.32-696.el6.x86_64 #1 SMP x86_64
+libc:glibc 2.12 NPTL 2.12
+
+vm_info: Java HotSpot(TM) 64-Bit Server VM (25.192-b12) for linux-amd64 JRE (1.8.0_192-b12), built on Oct  6 2018 00:00:00 by "java-re" with gcc 4.4.7 20120313 (Red Hat 4.4.7-3)

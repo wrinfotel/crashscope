@@ -44,6 +44,27 @@ func TestHeaderJdk17(t *testing.T) {
 	}
 }
 
+// L7: the problematic-frame symbol must never leak text from the next line.
+func TestFrameSymbolNoCrossLineJunk(t *testing.T) {
+	raw := []byte("#\n# A fatal error has been detected by the Java Runtime Environment:\n#\n" +
+		"#  SIGSEGV (0xb) at pc=0x00007f0000000000, pid=1, tid=2\n#\n" +
+		"# JRE version: OpenJDK Runtime Environment Temurin-17.0.4.1+1 (17.0.4.1+1) (build 17.0.4.1+1)\n" +
+		"# Java VM: OpenJDK 64-Bit Server VM Temurin-17.0.4.1+1 (17.0.4.1+1, mixed mode, g1 gc, linux-amd64)\n" +
+		"# Problematic frame:\n" +
+		"# C  [libfoo.so+0x1]\n" +
+		"#\n\n")
+	r, err := Split("f", raw)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := ParseHeader(r); err != nil {
+		t.Fatal(err)
+	}
+	if r.ProblemFrame.Symbol != "" {
+		t.Fatalf("ProblemFrame.Symbol = %q, want empty (no cross-line junk)", r.ProblemFrame.Symbol)
+	}
+}
+
 func TestHeaderJdk8(t *testing.T) {
 	r, err := Split("f", readTestdata(t, "jdk8_native_oom.log"))
 	if err != nil {

@@ -14,7 +14,8 @@ var (
 	jreRe    = regexp.MustCompile(`(?m)^#\s*JRE version:\s*(.*)$`)
 	vmRe     = regexp.MustCompile(`(?m)^#\s*Java VM:\s*(.*)$`)
 	// "# C  [libsqlitejdbc.so+0x6a2b]  sqlite3_prepare_v2+0x3b"
-	frameRe = regexp.MustCompile(`(?m)^#\s*([VCJjv])\s+(\[[^\]]+\]|\S+)\s*(.*)$`)
+	// [ \t] (not \s) so the symbol never leaks text from the next line.
+	frameRe = regexp.MustCompile(`(?m)^#[ \t]*([VCJjv])[ \t]+(\[[^\]]+\]|\S+)[ \t]*(.*)$`)
 )
 
 var vendors = []struct{ needle, name string }{
@@ -53,7 +54,7 @@ func ParseHeader(r *model.CrashReport) error {
 	if m := frameRe.FindStringSubmatch(r.Prologue); m != nil {
 		// model.Frame.Location stores the location without the "[...]"
 		// wrapper, e.g. "libsqlitejdbc.so+0x6a2b".
-		r.ProblemFrame = model.Frame{Type: m[1], Location: strings.Trim(m[2], "[]"), Symbol: m[3]}
+		r.ProblemFrame = model.Frame{Type: m[1], Location: strings.Trim(m[2], "[]"), Symbol: strings.TrimSpace(m[3])}
 	}
 	r.OutsideJVM = strings.Contains(r.Prologue,
 		"The crash happened outside the Java Virtual Machine in native code.")

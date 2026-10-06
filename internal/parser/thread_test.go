@@ -66,3 +66,47 @@ func TestThreadJdk8(t *testing.T) {
 		t.Fatalf("state = %q", r.CurrentThread.State)
 	}
 }
+
+// parseThreadBody runs ParseThread over a bare THREAD section body.
+func parseThreadBody(t *testing.T, body string) *model.CrashReport {
+	t.Helper()
+	r := &model.CrashReport{Sections: map[string]string{"THREAD": body}, StackFreeKB: -1}
+	if err := ParseThread(r); err != nil {
+		t.Fatal(err)
+	}
+	return r
+}
+
+// F2: real logs carry attributes between the quoted name and the bracket
+// (verbatim line from a public JDK 7u79 issue, sanitized).
+func TestCurrentThreadDaemonAttribute(t *testing.T) {
+	r := parseThreadBody(t,
+		`Current thread (0x00007f1bc0117800): JavaThread "C2 CompilerThread0" daemon [_thread_in_native, id=30354, stack(0x00007f1bacb75000,0x00007f1bacc76000)]`)
+	th := r.CurrentThread
+	if th.Kind != "JavaThread" || th.Name != "C2 CompilerThread0" ||
+		th.State != "_thread_in_native" || th.ID != "30354" {
+		t.Fatalf("CurrentThread = %+v", th)
+	}
+}
+
+// F2: nameless VMThread, id in a second bracket group (verbatim shape from
+// a public JDK 8u192 issue).
+func TestCurrentThreadNamelessVMThread(t *testing.T) {
+	r := parseThreadBody(t,
+		`Current thread (0x00002b8ca0096000): VMThread [stack: 0x00002bbede686000,0x00002bbede787000] [id=21597]`)
+	th := r.CurrentThread
+	if th.Kind != "VMThread" || th.Name != "" || th.ID != "21597" {
+		t.Fatalf("CurrentThread = %+v", th)
+	}
+	if th.State != "" {
+		t.Fatalf("State = %q, want empty (no _thread token present)", th.State)
+	}
+}
+
+// L9: siginfo on its own line must not capture the following line.
+func TestSigInfoNoCrossLineCapture(t *testing.T) {
+	r := parseThreadBody(t, "siginfo:\nsi_signo: 11 (SIGSEGV), si_code: 1 (SEGV_MAPERR)")
+	if r.SigInfo != "" {
+		t.Fatalf("SigInfo = %q, want empty (line must not leak across newline)", r.SigInfo)
+	}
+}
