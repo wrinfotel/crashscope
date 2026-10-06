@@ -29,6 +29,8 @@ Exit codes (CI-friendly):
 - `2` — unreadable file or not an hs_err log
 - `3` — usage error
 
+With multiple files, the final exit code is the maximum across all files.
+
 ## Supported inputs
 
 JDK 8, 11, 17, 21, 25 (latest) · linux, macOS, Windows · any vendor

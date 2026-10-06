@@ -6,8 +6,12 @@ import (
 
 // Frame is one entry of a native or Java stack.
 type Frame struct {
-	Type     string // V, C, J, j or v
-	Location string // "libsqlitejdbc.so+0x6a2b" or "org.sqlite.core.DB.prepare(...)V+8"
+	Type string // V, C, J, j or v
+	// Location is the frame target. Stack-frame lines keep the brackets for
+	// native frames ("[libsqlitejdbc.so+0x6a2b]") and are bare for Java
+	// frames ("org.sqlite.core.DB.prepare(...)V+8"); ProblemFrame.Location
+	// (parsed from the prologue) has brackets trimmed.
+	Location string
 	Symbol   string // remainder of the line, e.g. "sqlite3_prepare_v2+0x3b"
 }
 

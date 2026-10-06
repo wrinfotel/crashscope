@@ -153,3 +153,20 @@ func TestRenderTextJDK7EraJVMLine(t *testing.T) {
 		t.Fatalf("JVM line missing raw version string:\n%s", out)
 	}
 }
+
+// The ellipsis must land on a rune boundary: JVM version strings can carry
+// non-ASCII (trademark signs, vendor names), and a byte cut would split one.
+func TestTruncRespectsRuneBoundary(t *testing.T) {
+	if got := trunc("日本語テスト", 5); got != "日…" {
+		t.Fatalf("trunc cut inside a rune: %q", got)
+	}
+	if got := trunc("日本語テスト", 6); got != "日本…" {
+		t.Fatalf("trunc dropped a whole rune: %q", got)
+	}
+	if got := trunc("abc", 5); got != "abc" {
+		t.Fatalf("short string modified: %q", got)
+	}
+	if got := trunc("abcdef", 4); got != "abcd…" {
+		t.Fatalf("ASCII trunc wrong: %q", got)
+	}
+}

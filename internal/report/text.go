@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"strings"
+	"unicode/utf8"
 
 	"crashscope/internal/classifier"
 	"crashscope/internal/model"
@@ -78,6 +79,10 @@ func RenderText(w io.Writer, r *model.CrashReport, vs []classifier.Verdict, verb
 func trunc(s string, n int) string {
 	if len(s) <= n {
 		return s
+	}
+	// Back off to a rune boundary so the cut never splits a UTF-8 rune.
+	for n > 0 && !utf8.RuneStart(s[n]) {
+		n--
 	}
 	return s[:n] + "…"
 }
