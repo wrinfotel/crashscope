@@ -27,6 +27,10 @@ func TestEndToEndSyntheticCorpus(t *testing.T) {
 		t.Fatalf("glob: %v (%d files)", err, len(files))
 	}
 	for _, f := range files {
+		// unrecognized.log is the exit-1 case, covered below.
+		if filepath.Base(f) == "unrecognized.log" {
+			continue
+		}
 		var out bytes.Buffer
 		cmd := exec.Command(bin, "--json", f)
 		cmd.Stdout = &out
@@ -46,6 +50,30 @@ func TestEndToEndSyntheticCorpus(t *testing.T) {
 		if err := json.Unmarshal(out.Bytes(), &doc); err != nil {
 			t.Errorf("%s: invalid JSON: %v", filepath.Base(f), err)
 		}
+	}
+}
+
+func TestEndToEndUnrecognized(t *testing.T) {
+	bin := buildBin(t)
+	f := filepath.Join("..", "..", "testcorpus", "synthetic", "unrecognized.log")
+	var out bytes.Buffer
+	cmd := exec.Command(bin, "--json", f)
+	cmd.Stdout = &out
+	cmd.Stderr = os.Stderr
+	code := 0
+	if err := cmd.Run(); err != nil {
+		if ee, ok := err.(*exec.ExitError); ok {
+			code = ee.ExitCode()
+		} else {
+			t.Fatalf("run: %v", err)
+		}
+	}
+	if code != 1 {
+		t.Fatalf("exit = %d, want 1 (parsed, pattern unrecognized)", code)
+	}
+	var doc map[string]any
+	if err := json.Unmarshal(out.Bytes(), &doc); err != nil {
+		t.Fatalf("invalid JSON: %v", err)
 	}
 }
 

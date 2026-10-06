@@ -1,0 +1,41 @@
+#
+# A fatal error has been detected by the Java Runtime Environment:
+#
+#  EXCEPTION_ACCESS_VIOLATION (0xc0000005) at pc=0x00007ffa9a1b2c30, pid=2024, tid=3108
+#
+# JRE version: OpenJDK Runtime Environment Temurin-17.0.4.1+1 (17.0.4.1+1) (build 17.0.4.1+1)
+# Java VM: OpenJDK 64-Bit Server VM Temurin-17.0.4.1+1 (17.0.4.1+1, mixed mode, tiered, g1 gc, windows-amd64)
+# Problematic frame:
+# V  [jvm.dll+0x1b2c30]
+#
+# The crash happened outside the Java Virtual Machine in native code.
+# See problematic frame for where to report the bug.
+#
+
+---------------  S U M M A R Y ------------
+
+Command Line: java -Xmx2g -jar app.jar
+
+Host: DESKTOP-1A2B3C, 8 cores, 16282M, elapsed time: 512.345 seconds
+
+---------------  T H R E A D  ------------
+
+Current thread (0x000001e5f2b2be80):  JavaThread "main" [_thread_in_native, id=3108, stack(0x0000004a7f43c000,0x0000004a7f53d000)]
+
+Stack: [0x0000004a7f43c000,0x0000004a7f53d000],  sp=0x0000004a7f53a120,  free space=1011k
+Native frames: (J=compiled Java code, j=interpreted, Vv=VM code, C=native code)
+V  [jvm.dll+0x1b2c30]
+C  [app.dll+0x1a4f]  process_request+0x8b
+j  app.Main.main([Ljava/lang/String;)V+45
+v  ~StubRoutines::call_stub
+
+siginfo: EXCEPTION_ACCESS_VIOLATION (0xc0000005), reading address 0x0000000000000018
+
+---------------  V M  A R G S  ---------------
+jvm_args: -Xmx2g -Dapp.env=prod
+java_command: app.jar
+Launcher Type: SUN_STANDARD
+
+---------------  M A P  ---------------
+0x00007ffa9a000000  18944K  C:\Program Files\Eclipse Adoptium\jdk-17.0.4.1.1-hotspot\bin\jvm.dll
+0x00007ffa88000000   1024K  C:\app\lib\app.dll

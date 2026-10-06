@@ -1,0 +1,28 @@
+#
+# A fatal error has been detected by the Java Runtime Environment:
+#
+#  SIGSEGV (0xb) at pc=0x00007f34a0b2c310, pid=4711, tid=4712
+#
+# JRE version: OpenJDK Runtime Environment Temurin-17.0.4.1+1 (17.0.4.1+1) (build 17.0.4.1+1)
+# Java VM: OpenJDK 64-Bit Server VM Temurin-17.0.4.1+1 (17.0.4.1+1, mixed mode, tiered, g1 gc, linux-amd64)
+#
+
+---------------  S U M M A R Y ------------
+
+Command Line: java -Xmx4g -jar app.jar
+
+Host: worker-01, 8 cores, 31G, elapsed time: 555.5 seconds
+
+---------------  T H R E A D  ------------
+
+Current thread (0x00007f2c8802be80):  JavaThread "worker-3" [_thread_in_Java, id=4712, stack(0x00007f2c7f43c000,0x00007f2c7f53d000)]
+
+Stack: [0x00007f2c7f43c000,0x00007f2c7f53d000],  sp=0x00007f2c7f53a120,  free space=1011k
+Native frames: (J=compiled Java code, j=interpreted, Vv=VM code, C=native code)
+j  app.Worker.run()V+21
+v  ~StubRoutines::call_stub
+
+---------------  V M  A R G S  ---------------
+jvm_args: -Xmx4g -Dapp.env=prod
+java_command: app.jar
+Launcher Type: SUN_STANDARD

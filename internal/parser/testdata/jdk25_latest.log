@@ -1,0 +1,65 @@
+#
+# A fatal error has been detected by the Java Runtime Environment:
+#
+#  SIGSEGV (0xb) at pc=0x00007f2c6b51a2b4, pid=4711, tid=4712
+#
+# JRE version: OpenJDK Runtime Environment Temurin-25.0.1+8 (25.0.1+8) (build 25.0.1+8)
+# Java VM: OpenJDK 64-Bit Server VM Temurin-25.0.1+8 (25.0.1+8, mixed mode, sharing, tiered, compressed oops, compressed class ptrs, g1 gc, linux-amd64) Tiers: 6
+# Problematic frame:
+# C  [libsqlitejdbc.so+0x6a2b]  sqlite3_prepare_v2+0x3b
+#
+# Core dump will be written. Default location: core.4711
+#
+# If you would like to submit a bug report, please visit:
+#   https://bugreport.java.com/bugreport/crash.jsp
+#
+# The crash happened outside the Java Virtual Machine in native code.
+# See problematic frame for where to report the bug.
+#
+
+---------------  S U M M A R Y ------------
+
+Command Line: java -Xmx4g -jar app.jar
+
+Host: worker-01, 8 cores, 31G, elapsed time: 77.25 seconds
+
+---------------  T H R E A D  ------------
+
+Current thread (0x00007f2c8802be80):  JavaThread "main" [_thread_in_native, id=4712, stack(0x00007f2c7f43c000,0x00007f2c7f53d000)]
+
+Stack: [0x00007f2c7f43c000,0x00007f2c7f53d000],  sp=0x00007f2c7f53a120,  free space=1011k
+Native frames: (J=compiled Java code, j=interpreted, Vv=VM code, C=native code)
+C  [libsqlitejdbc.so+0x6a2b]  sqlite3_prepare_v2+0x3b
+j  org.sqlite.core.NativeDB.prepare(Ljava/lang/String;)J+0
+j  org.sqlite.core.DB.prepare(Lorg/sqlite/core/Stmt;)V+8
+j  app.dao.UserDao.findByEmail(Ljava/lang/String;)Lapp/model/User;+12
+j  app.Main.main([Ljava/lang/String;)V+45
+v  ~StubRoutines::call_stub
+
+siginfo: si_signo: 11 (SIGSEGV), si_code: 1 (SEGV_MAPERR), si_addr: 0x0000000000000010
+
+Registers:
+RAX=0x0000000000000000, RBX=0x00007f2c6b200010, RCX=0x0000000000000004
+
+Java frames: (J=compiled Java code, j=interpreted, Vv=VM code, C=native code)
+j  org.sqlite.core.NativeDB.prepare(Ljava/lang/String;)J+0
+j  org.sqlite.core.DB.prepare(Lorg/sqlite/core/Stmt;)V+8
+j  app.dao.UserDao.findByEmail(Ljava/lang/String;)Lapp/model/User;+12
+j  app.Main.main([Ljava/lang/String;)V+45
+v  ~StubRoutines::call_stub
+
+---------------  P R O C E S S  ---------------
+Java Threads: ( active 12, daemon 10 )
+
+---------------  V M  A R G S  ---------------
+jvm_args: -Xmx4g -Dapp.env=prod
+java_command: app.jar
+Launcher Type: SUN_STANDARD
+
+---------------  E V E N T S  ---------------
+[0.512s][info][gc] GC(0) Pause Young (Normal) (G1 Evacuation Pause) 24M->8M(512M)
+/app/bin/start.sh
+
+---------------  M A P  ---------------
+7f2c6b500000-7f2c6b600000 r--p 00000000 fd:01 1048577     /opt/app/lib/libsqlitejdbc.so
+7f2c84000000-7f2c86000000 r--p 00000000 fd:01 1048578     /usr/lib/jvm/temurin-17/lib/server/libjvm.so
