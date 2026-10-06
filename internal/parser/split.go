@@ -40,8 +40,12 @@ func Split(path string, raw []byte) (*model.CrashReport, error) {
 	}
 	prologue := text[:prologueEnd]
 
-	if len(secs) == 0 &&
-		!strings.Contains(prologue, "# A fatal error has been detected") &&
+	// The prologue "#" block (fatal-error or OOM message) is present in every
+	// real hs_err log; it is the format's fingerprint. Requiring it even when
+	// section headers exist keeps arbitrary text chopped into "-----" sections
+	// from masquerading as a crash log (which would misreport exit 1 as
+	// "parsed but unrecognized").
+	if !strings.Contains(prologue, "# A fatal error has been detected") &&
 		!strings.Contains(prologue, "insufficient memory for the Java Runtime Environment") {
 		return nil, fmt.Errorf("%s: not an hs_err_pid log", path)
 	}

@@ -50,3 +50,15 @@ func TestSplitRejectsGarbage(t *testing.T) {
 		t.Fatalf("err = %v, want not-an-hs_err error", err)
 	}
 }
+
+// Section headers alone are not an hs_err fingerprint: the prologue "#"
+// block with its fatal-error (or OOM) message is present in every real log
+// and must be required even when the file has section headers.
+func TestSplitRejectsSectionsWithoutPrologueMarker(t *testing.T) {
+	fake := "---------------  F O O  ---------------\nsome text\n" +
+		"---------------  B A R  ---------------\nmore text\n"
+	_, err := Split("fake.log", []byte(fake))
+	if err == nil || !strings.Contains(err.Error(), "not an hs_err_pid log") {
+		t.Fatalf("err = %v, want not-an-hs_err error", err)
+	}
+}
