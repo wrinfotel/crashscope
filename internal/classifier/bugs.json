@@ -1,0 +1,42 @@
+[
+  {
+    "id": "JDK-8303737",
+    "jdk_major": [21],
+    "version_regex": "\\b21\\.0\\.1\\b",
+    "library": "libjvm.so",
+    "symbol_regex": "PhaseIdealLoop::build_loop_late_post_work",
+    "url": "https://bugs.openjdk.org/browse/JDK-8303737",
+    "summary": "C2 compiler crash (SIGSEGV in PhaseIdealLoop::build_loop_late_post_work): a C2 load can bypass the subtype check that guarantees its base object type; seen in production on JDK 21.0.1 (e.g. Elasticsearch CI).",
+    "fix": "Update to JDK 21.0.2 or newer (fix backported to 21.0.2 as JDK-8319226); as a stopgap, disable C2 with -XX:TieredStopAtLevel=1."
+  },
+  {
+    "id": "JDK-8356324",
+    "jdk_major": [21],
+    "version_regex": "\\b21\\.0\\.[5-8]\\b",
+    "library": "libjvm.so",
+    "symbol_regex": "ClassListParser::resolve_indy_impl",
+    "url": "https://bugs.openjdk.org/browse/JDK-8356324",
+    "summary": "JVM crash (SIGSEGV at ClassListParser::resolve_indy_impl) during -Xshare:dump CDS archive creation on JDK 21.0.5-21.0.8.",
+    "fix": "Update to JDK 21.0.9 or newer (backport JDK-8366234), or re-run without -Xshare:dump."
+  },
+  {
+    "id": "JDK-8361117",
+    "jdk_major": [17],
+    "version_regex": "\\b17\\.0\\.(1[0-8]|[0-9])\\b",
+    "library": "libjvm.so",
+    "symbol_regex": "LShiftLNode::Ideal",
+    "url": "https://bugs.openjdk.org/browse/JDK-8361117",
+    "summary": "C2 compiler crash (SIGSEGV in LShiftLNode::Ideal due to an unexpected dead node); reported on JDK 17.0.15 and 11.0.27 with ECJ-compiled bytecode.",
+    "fix": "Update to JDK 17.0.19 or newer (backport JDK-8373336)."
+  },
+  {
+    "id": "JDK-8374463",
+    "jdk_major": [25],
+    "version_regex": "\\b25\\.0\\.1\\b",
+    "library": "libjvm.so",
+    "symbol_regex": "final_graph_reshaping_walk",
+    "url": "https://bugs.openjdk.org/browse/JDK-8374463",
+    "summary": "C2 compiler SIGSEGV in Compile::final_graph_reshaping_walk while compiling Netty's ReferenceCountUpdater::retryRelease0 on JDK 25.0.1.",
+    "fix": "Update to JDK 25.0.2 or newer (no crash confirmed since 25.0.2+9, see JDK-8375984); as a stopgap, exclude the method with -XX:CompileCommand=exclude,io/netty/util/internal/ReferenceCountUpdater.retryRelease0."
+  }
+]

@@ -14,6 +14,7 @@ type Verdict struct {
 	Summary    string
 	Fix        []string
 	Evidence   []string // quoted lines from the log
+	Bugs       []Bug    // known-JVM-bug hits matching this crash
 }
 
 var confidenceRank = map[string]int{"high": 3, "medium": 2, "low": 1}
@@ -25,6 +26,22 @@ func Classify(r *model.CrashReport) []Verdict {
 	for _, rule := range rules {
 		if v, ok := rule(r); ok {
 			out = append(out, *v)
+		}
+	}
+	if hits := matchBugs(loadBugs(), r); len(hits) > 0 {
+		if len(out) == 0 {
+			out = append(out, Verdict{
+				ID:         "known-jvm-bug",
+				Title:      "Matches a known JVM bug",
+				Confidence: "medium",
+				Summary:    hits[0].Summary,
+				Fix:        []string{hits[0].Fix},
+				Bugs:       hits,
+			})
+		} else {
+			for i := range out {
+				out[i].Bugs = hits
+			}
 		}
 	}
 	sort.SliceStable(out, func(i, j int) bool {
