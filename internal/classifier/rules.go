@@ -24,6 +24,16 @@ func allText(r *model.CrashReport) string {
 	return strings.Join(r.Messages, " ") + " " + r.SigInfo + " " + strings.Join(r.Events, " ")
 }
 
+// anyContains reports whether any single line contains the needle.
+func anyContains(lines []string, needle string) bool {
+	for _, ln := range lines {
+		if strings.Contains(ln, needle) {
+			return true
+		}
+	}
+	return false
+}
+
 func ruleNativeOOM(r *model.CrashReport) (*Verdict, bool) {
 	triggers := []string{
 		"insufficient memory for the Java Runtime Environment",
@@ -33,11 +43,24 @@ func ruleNativeOOM(r *model.CrashReport) (*Verdict, bool) {
 		"out of swap space",
 		"unable to create native thread",
 	}
+	// A trigger in the prologue messages is definitive: the OOM itself killed
+	// the process. A trigger only in events/siginfo records an earlier OOM
+	// that the log merely mentions — downgrade to medium so a rule pinpointing
+	// the actual crash frame can win the tie.
 	hit := ""
+	conf := "medium"
 	for _, t := range triggers {
-		if strings.Contains(allText(r), t) {
-			hit = t
+		if anyContains(r.Messages, t) {
+			hit, conf = t, "high"
 			break
+		}
+	}
+	if hit == "" {
+		for _, t := range triggers {
+			if strings.Contains(r.SigInfo, t) || anyContains(r.Events, t) {
+				hit = t
+				break
+			}
 		}
 	}
 	if hit == "" {
@@ -46,7 +69,7 @@ func ruleNativeOOM(r *model.CrashReport) (*Verdict, bool) {
 	v := &Verdict{
 		ID:         "native-oom",
 		Title:      "Native (off-heap) memory exhaustion",
-		Confidence: "high",
+		Confidence: conf,
 		Summary:    "The JVM could not get memory from the OS. Trigger marker: \"" + hit + "\".",
 		Fix: []string{
 			"Check OS-level limits: cgroup/container memory cap, RLIMIT_AS, swap and overcommit settings.",
@@ -117,7 +140,7 @@ func ruleJITCrash(r *model.CrashReport) (*Verdict, bool) {
 			"Immediate workaround: -XX:CompileCommand=exclude,<class>.<method> for the method in the crash frame.",
 			"Broader workaround: -XX:TieredStopAtLevel=1 (C1 only) — slower, but stops C2 from compiling anything.",
 		},
-		Evidence: evidenceContaining(txt, "Internal Error"),
+		Evidence: evidenceContaining(r, "Internal Error"),
 	}
 	return v, true
 }
@@ -137,7 +160,7 @@ func ruleVMAssert(r *model.CrashReport) (*Verdict, bool) {
 			"Search bugs.openjdk.org for the file:line from the Internal Error line — often a known issue.",
 			"If reproducible on the latest CPU, file it upstream with this hs_err attached.",
 		},
-		Evidence: evidenceContaining(txt, "Internal Error"),
+		Evidence: evidenceContaining(r, "Internal Error"),
 	}
 	return v, true
 }
@@ -155,11 +178,15 @@ func ruleJniCrash(r *model.CrashReport) (*Verdict, bool) {
 	if !r.OutsideJVM && r.CurrentThread.State != "_thread_in_native" && !strings.HasSuffix(lib, ".so") {
 		return nil, false
 	}
+	summary := "The faulting instruction belongs to native library " + lib + ", called from Java via JNI."
+	if isSystemLibrary(lib) {
+		summary = "The faulting instruction belongs to the system library " + lib + ", called from Java via JNI."
+	}
 	v := &Verdict{
 		ID:         "sigsegv-jni",
-		Title:      "SIGSEGV inside third-party native code (JNI)",
+		Title:      jniCrashTitle(r.Signal),
 		Confidence: "high",
-		Summary:    "The faulting instruction belongs to native library " + lib + ", called from Java via JNI.",
+		Summary:    summary,
 		Fix: []string{
 			"Upgrade " + lib + " to the latest release — check its own issue tracker for this crash signature.",
 			"Verify the library matches your platform/arch and was built against a compatible toolchain.",
@@ -179,6 +206,32 @@ func ruleJniCrash(r *model.CrashReport) (*Verdict, bool) {
 		}
 	}
 	return v, true
+}
+
+// jniCrashTitle names the actual fatal signal instead of assuming SIGSEGV.
+func jniCrashTitle(signal string) string {
+	signal = strings.TrimSpace(signal)
+	if signal == "" {
+		return "Fatal error inside native library (JNI)"
+	}
+	if strings.HasPrefix(signal, "SIGSEGV") {
+		return "SIGSEGV inside third-party native code (JNI)"
+	}
+	return strings.Fields(signal)[0] + " inside native code (JNI)"
+}
+
+// isSystemLibrary reports whether lib is an OS-level library rather than
+// application or third-party code.
+func isSystemLibrary(lib string) bool {
+	if lib == "libc.so" {
+		return true
+	}
+	for _, p := range []string{"libc", "ld-", "libSystem", "libpthread", "libm"} {
+		if strings.HasPrefix(lib, p) {
+			return true
+		}
+	}
+	return false
 }
 
 func ruleVMInternal(r *model.CrashReport) (*Verdict, bool) {
@@ -222,23 +275,37 @@ func ruleGlibcHardware(r *model.CrashReport) (*Verdict, bool) {
 					"Update glibc and the native libraries in use; a double-free in one library corrupts the shared heap.",
 					"Check dmesg for OOM-killer activity and EDAC/ECC reports around the crash time.",
 				},
-				Evidence: evidenceContaining(txt, t),
+				Evidence: evidenceContaining(r, t),
 			}, true
 		}
 	}
 	return nil, false
 }
 
-func evidenceContaining(txt, needle string) []string {
+// evidenceContaining returns up to 3 real quoted log lines containing the
+// needle. allText() joins its parts with spaces and contains no newlines,
+// so the lines are recovered from the prologue messages, the events and the
+// siginfo line individually instead of by splitting the joined text.
+func evidenceContaining(r *model.CrashReport, needle string) []string {
 	var out []string
-	for _, ln := range strings.Split(txt, " \n") {
-		ln = strings.TrimSpace(ln)
+	for _, ln := range r.Messages {
 		if strings.Contains(ln, needle) {
-			out = append(out, ln)
+			out = append(out, strings.TrimSpace(ln))
 			if len(out) >= 3 {
-				break
+				return out
 			}
 		}
+	}
+	for _, ln := range r.Events {
+		if strings.Contains(ln, needle) {
+			out = append(out, strings.TrimSpace(ln))
+			if len(out) >= 3 {
+				return out
+			}
+		}
+	}
+	if len(out) < 3 && strings.Contains(r.SigInfo, needle) {
+		out = append(out, strings.TrimSpace(r.SigInfo))
 	}
 	return out
 }
