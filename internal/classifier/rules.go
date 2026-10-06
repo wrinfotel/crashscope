@@ -91,14 +91,29 @@ func ruleNativeOOM(r *model.CrashReport) (*Verdict, bool) {
 }
 
 func ruleStackOverflow(r *model.CrashReport) (*Verdict, bool) {
-	txt := allText(r)
-	if !(strings.Contains(txt, "StackOverflow") || strings.Contains(txt, "stack overflow")) {
+	// Marker shapes: "StackOverflowError" (Java exception), "stack overflow"
+	// (prose), "EXCEPTION_STACK_OVERFLOW" (Windows prologue error line).
+	txt := strings.ToLower(allText(r))
+	if !(strings.Contains(txt, "stackoverflow") ||
+		strings.Contains(txt, "stack overflow") ||
+		strings.Contains(txt, "stack_overflow")) {
 		return nil, false
+	}
+	// Mirror the native-oom tiering: a marker in the prologue messages means
+	// the overflow itself killed the process. A marker only in events/siginfo
+	// records an earlier, handled StackOverflowError — downgrade to medium so
+	// a rule pinpointing the actual crash frame can win the tie.
+	conf := "medium"
+	ml := strings.ToLower(strings.Join(r.Messages, " "))
+	if strings.Contains(ml, "stackoverflow") ||
+		strings.Contains(ml, "stack overflow") ||
+		strings.Contains(ml, "stack_overflow") {
+		conf = "high"
 	}
 	v := &Verdict{
 		ID:         "stack-overflow",
 		Title:      "Stack overflow (unbounded recursion)",
-		Confidence: "high",
+		Confidence: conf,
 		Summary:    "The stack ran out: either Java recursion or a deep native call chain.",
 		Fix: []string{
 			"Look at the Java frames in the report: a repeated frame name is the recursion — fix the missing base case.",
@@ -170,9 +185,8 @@ func ruleJniCrash(r *model.CrashReport) (*Verdict, bool) {
 	if f.Type != "C" || f.Location == "" {
 		return nil, false
 	}
-	lib := strings.Trim(f.Location, "[]")
-	lib = strings.SplitN(lib, "+", 2)[0]
-	if lib == "libjvm.so" || lib == "jvm.dll" || lib == "libjvm.dylib" {
+	lib := frameLib(f)
+	if isJVMLibrary(lib) {
 		return nil, false // JVM's own frame — ruleVMInternal
 	}
 	if !r.OutsideJVM && r.CurrentThread.State != "_thread_in_native" && !strings.HasSuffix(lib, ".so") {
@@ -220,13 +234,30 @@ func jniCrashTitle(signal string) string {
 	return strings.Fields(signal)[0] + " inside native code (JNI)"
 }
 
+// frameLib extracts the library name from a frame location:
+// "[libjvm.so+0x6a2b0f]" or "libjvm.so+0x6a2b0f" -> "libjvm.so".
+func frameLib(f model.Frame) string {
+	lib := strings.Trim(f.Location, "[]")
+	return strings.SplitN(lib, "+", 2)[0]
+}
+
+// isJVMLibrary reports whether lib is the HotSpot VM library itself:
+// libjvm.so on Linux/Solaris, jvm.dll on Windows, libjvm.dylib on macOS.
+func isJVMLibrary(lib string) bool {
+	return lib == "libjvm.so" || lib == "jvm.dll" || lib == "libjvm.dylib"
+}
+
 // isSystemLibrary reports whether lib is an OS-level library rather than
-// application or third-party code.
+// application or third-party code. The patterns are name-exact up to the
+// version suffix, so libcrypto.so is not swept in by a "libc" prefix match.
 func isSystemLibrary(lib string) bool {
-	if lib == "libc.so" {
-		return true
-	}
-	for _, p := range []string{"libc", "ld-", "libSystem", "libpthread", "libm"} {
+	for _, p := range []string{
+		"libc.", "libc-", // C library (glibc, musl)
+		"ld-", "ld.so", "ld64", // dynamic linker
+		"libSystem", "libsystem_", // macOS system libraries
+		"libpthread.", "libpthread-",
+		"libm.", "libm-",
+	} {
 		if strings.HasPrefix(lib, p) {
 			return true
 		}
@@ -237,7 +268,7 @@ func isSystemLibrary(lib string) bool {
 func ruleVMInternal(r *model.CrashReport) (*Verdict, bool) {
 	f := r.ProblemFrame
 	isVM := f.Type == "V" ||
-		(f.Type == "C" && strings.HasPrefix(strings.Trim(f.Location, "[]"), "libjvm.so"))
+		(f.Type == "C" && isJVMLibrary(frameLib(f)))
 	if !isVM {
 		return nil, false
 	}

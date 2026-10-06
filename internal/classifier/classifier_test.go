@@ -145,6 +145,80 @@ func TestClassifyUnknownFallback(t *testing.T) {
 	}
 }
 
+// A C-frame crash inside the HotSpot library on Windows (jvm.dll) is the JVM
+// itself, not JNI: it must classify as vm-internal instead of falling through
+// to "unknown" (ruleJniCrash excludes it, so ruleVMInternal must claim it).
+func TestClassifyWindowsJvmDllFrameIsVMInternal(t *testing.T) {
+	r, err := parser.Parse("f", []byte(winVMInternalLog))
+	if err != nil {
+		t.Fatal(err)
+	}
+	vs := Classify(r)
+	if len(vs) == 0 || vs[0].ID != "vm-internal" {
+		t.Fatalf("verdicts = %+v, want vm-internal", vs)
+	}
+}
+
+// Mirror of the native-oom tiering: a StackOverflowError merely recorded in
+// Events (an earlier, handled exception) must not claim high confidence.
+func TestStackOverflowEventOnlyIsMedium(t *testing.T) {
+	r, err := parser.Parse("f", []byte(soeLog)) // soeLog mentions SOE only in EVENTS
+	if err != nil {
+		t.Fatal(err)
+	}
+	found := false
+	for _, v := range Classify(r) {
+		if v.ID == "stack-overflow" {
+			found = true
+			if v.Confidence != "medium" {
+				t.Fatalf("stack-overflow confidence = %q, want medium", v.Confidence)
+			}
+		}
+	}
+	if !found {
+		t.Fatal("stack-overflow verdict missing")
+	}
+}
+
+// A stack-overflow marker in the prologue (EXCEPTION_STACK_OVERFLOW on
+// Windows) means the overflow itself killed the process — high confidence.
+func TestStackOverflowPrologueIsHigh(t *testing.T) {
+	r, err := parser.Parse("f", []byte(soePrologueLog))
+	if err != nil {
+		t.Fatal(err)
+	}
+	vs := Classify(r)
+	if len(vs) == 0 || vs[0].ID != "stack-overflow" || vs[0].Confidence != "high" {
+		t.Fatalf("verdicts = %+v, want stack-overflow high", vs)
+	}
+}
+
+// System-library wording is reserved for OS libraries: prefix matching on
+// "libc"/"libm" used to sweep in libcrypto/libclang/libmongoc.
+func TestIsSystemLibraryExactNames(t *testing.T) {
+	yes := []string{
+		"libc.so", "libc.so.6", "libc-2.31.so", "libc.musl-x86_64.so.1",
+		"ld-linux-x86-64.so.2", "ld-2.31.so", "ld.so",
+		"libSystem.B.dylib", "libsystem_kernel.dylib",
+		"libpthread.so.0", "libm.so.6", "libm-2.31.so",
+	}
+	no := []string{
+		"libcrypto.so.1.1", "libclang.so", "libmongoc.so", "libmagic.so",
+		"libmd.so", "sigar-amd64-winnt.dll", "libsqlitejdbc.so",
+		"jvm.dll", "libjvm.so",
+	}
+	for _, lib := range yes {
+		if !isSystemLibrary(lib) {
+			t.Errorf("isSystemLibrary(%q) = false, want true", lib)
+		}
+	}
+	for _, lib := range no {
+		if isSystemLibrary(lib) {
+			t.Errorf("isSystemLibrary(%q) = true, want false", lib)
+		}
+	}
+}
+
 func TestClassifyOomEventDoesNotBeatJni(t *testing.T) {
 	r, err := parser.Parse("f", []byte(oomEventLog))
 	if err != nil {
@@ -325,4 +399,38 @@ siginfo: si_signo: 6 (SIGABRT), si_code: -6 (SI_TKILL)
 
 ---------------  V M  A R G S  ---------------
 jvm_args: -Xmx2g
+`
+
+// winVMInternalLog is a Windows crash whose problematic frame is C inside
+// jvm.dll — the HotSpot library itself, which ruleVMInternal must claim.
+const winVMInternalLog = `#
+# A fatal error has been detected by the Java Runtime Environment:
+#
+#  EXCEPTION_ACCESS_VIOLATION (0xc0000005) at pc=0x00007ffaa2b32c30, pid=4711, tid=4712
+#
+# JRE version: OpenJDK Runtime Environment Temurin-17.0.4.1+1 (17.0.4.1+1) (build 17.0.4.1+1)
+# Java VM: OpenJDK 64-Bit Server VM Temurin-17.0.4.1+1 (17.0.4.1+1, mixed mode, tiered, g1 gc, windows-amd64)
+# Problematic frame:
+# C  [jvm.dll+0x1b2c30]
+#
+
+---------------  T H R E A D  ------------
+
+Current thread (0x00007f):  JavaThread "main" [_thread_in_Java, id=9, stack(0x0,0x0)]
+`
+
+// soePrologueLog carries the stack-overflow marker in the prologue error
+// line (the Windows EXCEPTION_STACK_OVERFLOW shape).
+const soePrologueLog = `#
+# A fatal error has been detected by the Java Runtime Environment:
+#
+#  EXCEPTION_STACK_OVERFLOW (0xc00000fd) at pc=0x00007ffaa2b32c30, pid=4711, tid=4712
+#
+# JRE version: OpenJDK Runtime Environment Temurin-17.0.4.1+1 (17.0.4.1+1) (build 17.0.4.1+1)
+# Java VM: OpenJDK 64-Bit Server VM Temurin-17.0.4.1+1 (17.0.4.1+1, mixed mode, tiered, g1 gc, windows-amd64)
+#
+
+---------------  T H R E A D  ------------
+
+Current thread (0x00007f):  JavaThread "worker-3" [_thread_in_Java, id=9, stack(0x0,0x0)]
 `
